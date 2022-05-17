@@ -47,9 +47,9 @@ CREATE TABLE metadata_index (
 
 CREATE TABLE metadata_entity_corpuser (
     urn                                     VARCHAR(500) NOT NULL,
-    corpuserinfo                            longtext NOT NULL,
-    corpusereditableinfo                    longtext NOT NULL,
-    datasetreconmmendationsinfo             longtext NOT NULL,
+    corpuserinfo                            longtext,
+    corpusereditableinfo                    longtext,
+    datasetreconmmendationsinfo             longtext,
     CONSTRAINT pk_metadata_entity_corpuser PRIMARY KEY (urn)
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
