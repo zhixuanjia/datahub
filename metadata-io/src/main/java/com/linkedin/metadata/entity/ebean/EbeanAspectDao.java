@@ -156,7 +156,7 @@ public class EbeanAspectDao implements AspectDao {
     validateConnection();
     if (insert) {
       // Dual write to entity table
-      if (ebeanAspect.getUrn().startsWith("urn:li:corpuser")) {
+      if (ebeanAspect != null && ebeanAspect.getKey() != null && ebeanAspect.getKey().getUrn().startsWith("urn:li:corpuser:")) {
         dualWriteToEntityTable(ebeanAspect);
       }
       _server.insert(ebeanAspect);
@@ -593,30 +593,41 @@ public class EbeanAspectDao implements AspectDao {
   }
 
   private CorpUserEntity contructCorpUserEntity(EbeanAspectV2 ebeanAspectV2) {
-    String aspect = ebeanAspectV2.getAspect();
-    if (aspect.equals("corpUserEditableInfo")) {
-      return new CorpUserEntity(ebeanAspectV2.getUrn(), null, aspect, null, null);
-    } else if (aspect.equals("corpUserInfo")) {
-      return new CorpUserEntity(ebeanAspectV2.getUrn(), aspect, null, null, null);
-    } else if (aspect.equals("corpUserStatus")) {
-      return new CorpUserEntity(ebeanAspectV2.getUrn(), null, null, null, aspect);
-    } else if (aspect.equals("corpUserKey")) {
-      return new CorpUserEntity(ebeanAspectV2.getUrn(), null, null, aspect, null);
+    String aspect = ebeanAspectV2.getKey().getAspect();
+    String metadataJson = ebeanAspectV2.getMetadata();
+    CorpUserEntity corpUserEntity = _server.find(CorpUserEntity.class, ebeanAspectV2.getKey().getUrn());
+    if(corpUserEntity == null ){
+      corpUserEntity = new  CorpUserEntity(ebeanAspectV2.getKey().getUrn(), null, null, null, null);
     }
-
-    throw new RuntimeException("no corresponding aspect found.");
+    if (aspect.equals("corpUserEditableInfo")) {
+      corpUserEntity.setCorpusereditableinfo(metadataJson);
+    } else if (aspect.equals("corpUserInfo")) {
+      corpUserEntity.setCorpuserinfo(metadataJson);
+    } else if (aspect.equals("corpUserStatus")) {
+      corpUserEntity.setCorpuserstatus(metadataJson);
+    } else if (aspect.equals("corpUserKey")) {
+      corpUserEntity.setGetcorpuserkey(metadataJson);
+    } else {
+      throw new RuntimeException("no corresponding aspect found: " + aspect);
+    }
+    return corpUserEntity;
   }
 
   private void dualWriteToEntityTable(EbeanAspectV2 ebeanAspect) {
+    log.info("@@ >>>>>> starts dual write on urn={}, aspect={}", ebeanAspect.getKey().getUrn(), ebeanAspect.getKey().getAspect());
     CorpUserEntity corpUserEntity = contructCorpUserEntity(ebeanAspect);
-    if (!entityExists(ebeanAspect.getUrn())) {
+    _server.save(corpUserEntity);
+
+    /*
+    if (!entityExists(ebeanAspect.getKey().getUrn())) {
       _server.insert(corpUserEntity);
+
     } else {
-      final CorpUserEntity.PrimaryKey key = new CorpUserEntity.PrimaryKey(ebeanAspect.getUrn());
+      final CorpUserEntity.PrimaryKey key = new CorpUserEntity.PrimaryKey(ebeanAspect.getKey().getUrn());
       CorpUserEntity existingEntity = _server.find(CorpUserEntity.class, key);
       setCorrectAspect(existingEntity, ebeanAspect);
       _server.update(corpUserEntity);
-    }
+    }*/
   }
 
   private boolean entityExists(String urn) {
@@ -630,15 +641,15 @@ public class EbeanAspectDao implements AspectDao {
   }
 
   private void setCorrectAspect(CorpUserEntity corpUserEntity, EbeanAspectV2 ebeanAspectV2) {
-    String aspect = ebeanAspectV2.getAspect();
+    String aspect = ebeanAspectV2.getKey().getAspect();
     if (aspect.equals("corpUserEditableInfo")) {
-      corpUserEntity.setCorpusereditableinfo(aspect);
+      corpUserEntity.setCorpusereditableinfo(ebeanAspectV2.getMetadata());
     } else if (aspect.equals("corpUserInfo")) {
-      corpUserEntity.setCorpuserinfo(aspect);
+      corpUserEntity.setCorpuserinfo(ebeanAspectV2.getMetadata());
     } else if (aspect.equals("corpUserStatus")) {
-      corpUserEntity.setCorpuserstatus(aspect);
+      corpUserEntity.setCorpuserstatus(ebeanAspectV2.getMetadata());
     } else if (aspect.equals("corpUserKey")) {
-      corpUserEntity.setGetcorpuserkey(aspect);
+      corpUserEntity.setGetcorpuserkey(ebeanAspectV2.getMetadata());
     }
   }
 }
