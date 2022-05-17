@@ -154,11 +154,12 @@ public class EbeanAspectDao implements AspectDao {
 
   protected void saveAspect(@Nonnull final EbeanAspectV2 ebeanAspect, final boolean insert) {
     validateConnection();
+    // Dual write to entity table
+    if (ebeanAspect != null && ebeanAspect.getKey() != null && ebeanAspect.getKey().getUrn().startsWith("urn:li:corpuser:")) {
+      dualWriteToEntityTable(ebeanAspect);
+    }
+
     if (insert) {
-      // Dual write to entity table
-      if (ebeanAspect != null && ebeanAspect.getKey() != null && ebeanAspect.getKey().getUrn().startsWith("urn:li:corpuser:")) {
-        dualWriteToEntityTable(ebeanAspect);
-      }
       _server.insert(ebeanAspect);
     } else {
       _server.update(ebeanAspect);
@@ -595,10 +596,12 @@ public class EbeanAspectDao implements AspectDao {
   private CorpUserEntity contructCorpUserEntity(EbeanAspectV2 ebeanAspectV2) {
     String aspect = ebeanAspectV2.getKey().getAspect();
     String metadataJson = ebeanAspectV2.getMetadata();
-    CorpUserEntity corpUserEntity = _server.find(CorpUserEntity.class, ebeanAspectV2.getKey().getUrn());
+    final CorpUserEntity.PrimaryKey key = new CorpUserEntity.PrimaryKey(ebeanAspectV2.getKey().getUrn());
+    CorpUserEntity corpUserEntity = _server.find(CorpUserEntity.class, key);
     if(corpUserEntity == null ){
-      corpUserEntity = new  CorpUserEntity(ebeanAspectV2.getKey().getUrn(), null, null, null, null);
+      corpUserEntity = new CorpUserEntity(ebeanAspectV2.getKey().getUrn(), null, null, null, null);
     }
+
     if (aspect.equals("corpUserEditableInfo")) {
       corpUserEntity.setCorpusereditableinfo(metadataJson);
     } else if (aspect.equals("corpUserInfo")) {
