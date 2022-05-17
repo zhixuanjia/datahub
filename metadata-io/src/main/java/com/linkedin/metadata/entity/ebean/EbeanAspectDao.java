@@ -19,6 +19,8 @@ import io.ebean.PagedList;
 import io.ebean.Query;
 import io.ebean.RawSql;
 import io.ebean.RawSqlBuilder;
+import io.ebean.SqlQuery;
+import io.ebean.SqlRow;
 import io.ebean.Transaction;
 import io.ebean.TxScope;
 import io.ebean.annotation.TxIsolation;
@@ -153,6 +155,10 @@ public class EbeanAspectDao implements AspectDao {
   protected void saveAspect(@Nonnull final EbeanAspectV2 ebeanAspect, final boolean insert) {
     validateConnection();
     if (insert) {
+      // Dual write to entity table
+      if (ebeanAspect.getUrn().startsWith("urn:li:corpuser")) {
+        dualWriteToEntityTable(ebeanAspect);
+      }
       _server.insert(ebeanAspect);
     } else {
       _server.update(ebeanAspect);
@@ -584,5 +590,55 @@ public class EbeanAspectDao implements AspectDao {
         .inRange("createdOn", new Timestamp(startTimeMillis), new Timestamp(endTimeMillis))
         .findList();
     return aspectV2s;
+  }
+
+  private CorpUserEntity contructCorpUserEntity(EbeanAspectV2 ebeanAspectV2) {
+    String aspect = ebeanAspectV2.getAspect();
+    if (aspect.equals("corpUserEditableInfo")) {
+      return new CorpUserEntity(ebeanAspectV2.getUrn(), null, aspect, null, null);
+    } else if (aspect.equals("corpUserInfo")) {
+      return new CorpUserEntity(ebeanAspectV2.getUrn(), aspect, null, null, null);
+    } else if (aspect.equals("corpUserStatus")) {
+      return new CorpUserEntity(ebeanAspectV2.getUrn(), null, null, null, aspect);
+    } else if (aspect.equals("corpUserKey")) {
+      return new CorpUserEntity(ebeanAspectV2.getUrn(), null, null, aspect, null);
+    }
+
+    throw new RuntimeException("no corresponding aspect found.");
+  }
+
+  private void dualWriteToEntityTable(EbeanAspectV2 ebeanAspect) {
+    CorpUserEntity corpUserEntity = contructCorpUserEntity(ebeanAspect);
+    if (!entityExists(ebeanAspect.getUrn())) {
+      _server.insert(corpUserEntity);
+    } else {
+      final CorpUserEntity.PrimaryKey key = new CorpUserEntity.PrimaryKey(ebeanAspect.getUrn());
+      CorpUserEntity existingEntity = _server.find(CorpUserEntity.class, key);
+      setCorrectAspect(existingEntity, ebeanAspect);
+      _server.update(corpUserEntity);
+    }
+  }
+
+  private boolean entityExists(String urn) {
+    final String queryStr =
+        "SELECT * FROM metadata_entity_corpuser \n"
+            + "WHERE urn = '" + urn + "'";
+
+    final SqlQuery query = _server.createSqlQuery(queryStr);
+    final List<SqlRow> rows = query.findList();
+    return rows.size() > 0;
+  }
+
+  private void setCorrectAspect(CorpUserEntity corpUserEntity, EbeanAspectV2 ebeanAspectV2) {
+    String aspect = ebeanAspectV2.getAspect();
+    if (aspect.equals("corpUserEditableInfo")) {
+      corpUserEntity.setCorpusereditableinfo(aspect);
+    } else if (aspect.equals("corpUserInfo")) {
+      corpUserEntity.setCorpuserinfo(aspect);
+    } else if (aspect.equals("corpUserStatus")) {
+      corpUserEntity.setCorpuserstatus(aspect);
+    } else if (aspect.equals("corpUserKey")) {
+      corpUserEntity.setGetcorpuserkey(aspect);
+    }
   }
 }
