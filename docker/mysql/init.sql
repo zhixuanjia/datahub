@@ -41,3 +41,30 @@ CREATE TABLE metadata_index (
  INDEX stringIndex (`urn`,`aspect`,`path`,`stringVal`),
  INDEX doubleIndex (`urn`,`aspect`,`path`,`doubleVal`)
 );
+
+
+-- create CorpUser entity table with CorpUserInfo, CorpUserEditableInfo, DatasetRecommendationsInfo aspects
+
+CREATE TABLE metadata_entity_corpuser (
+    urn                                     VARCHAR(500) NOT NULL,
+    corpuserinfo                            longtext NOT NULL,
+    corpusereditableinfo                    longtext NOT NULL,
+    datasetreconmmendationsinfo             longtext NOT NULL,
+    CONSTRAINT pk_metadata_entity_corpuser PRIMARY KEY (urn)
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+
+-- create index virtual column for CorpUser entity table
+
+ALTER TABLE metadata_entity_corpuser
+    ADD COLUMN field_corpuserinfo$firstName_idx VARCHAR(255)  GENERATED ALWAYS AS
+    (`corpuserinfo` ->> '$.firstName') VIRTUAL;
+
+ALTER TABLE metadata_entity_corpuser
+    ADD COLUMN field_corpuserinfo$lastName_idx VARCHAR(255)  GENERATED ALWAYS AS
+    (`corpuserinfo` ->> '$.lastName') VIRTUAL;
+
+-- create indexes (firstName, lastName) for the virtual column
+
+CREATE INDEX field_corpuserinfo$firstName_idx ON metadata_entity_corpuser (urn, field_corpuserinfo$firstName_idx);
+
+CREATE INDEX field_corpuserinfo$lasttName_idx ON metadata_entity_corpuser (urn, field_corpuserinfo$lastName_idx);
