@@ -81,3 +81,70 @@ ALTER TABLE metadata_entity_corpuser
 CREATE INDEX field_corpuserinfo$fullName_idx ON metadata_entity_corpuser (urn, field_corpuserinfo$fullName_idx);
 
 CREATE INDEX field_corpuserinfo$displayName_idx ON metadata_entity_corpuser (urn, field_corpuserinfo$displayName_idx);
+
+
+
+DROP TABLE IF EXISTS metadata_entity_dataset;
+
+CREATE TABLE metadata_entity_dataset (
+                                          urn                                   VARCHAR(500) NOT NULL,
+                                          browsepaths                           longtext,
+                                          container                             longtext,
+                                          dataplatforminstance                  longtext,
+                                          datasetproperties                     longtext,
+                                          editableschemametadata                longtext,
+                                          datasetkey                            longtext,
+                                          institutionalmemory                   longtext,
+                                          ownership                             longtext,
+                                          schemametadata                        longtext,
+                                          upstreamlineage                       longtext,
+                                          globaltags                            longtext,
+                                          CONSTRAINT pk_metadata_entity_corpuser PRIMARY KEY (urn)
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+
+-- create index virtual column for Dataset entity table
+
+
+ALTER TABLE metadata_entity_dataset
+    ADD COLUMN field_datasetkey$name_idx VARCHAR(255)  GENERATED ALWAYS AS
+    (`datasetkey` ->> '$.name') VIRTUAL;
+ALTER TABLE metadata_entity_dataset
+    ADD COLUMN field_datasetkey$platform_idx VARCHAR(255)  GENERATED ALWAYS AS
+    (`datasetkey` ->> '$.platform') VIRTUAL;
+ALTER TABLE metadata_entity_dataset
+    ADD COLUMN field_datasetkey$origin_idx VARCHAR(255)  GENERATED ALWAYS AS
+    (`datasetkey` ->> '$.origin') VIRTUAL;
+ALTER TABLE metadata_entity_dataset
+    ADD COLUMN field_browsepaths$first_path_idx VARCHAR(255)  GENERATED ALWAYS AS
+    (`browsepaths` ->> '$.paths[0]') VIRTUAL;
+ALTER TABLE metadata_entity_dataset
+    ADD COLUMN field_ownership$primary_owner_idx VARCHAR(255)  GENERATED ALWAYS AS
+    (`ownership` ->> '$.owners[0].owner') VIRTUAL;
+
+
+
+
+-- create indexes (name, platform, origin) for the virtual column
+CREATE INDEX field_datasetkey$name_idx ON metadata_entity_dataset (urn, field_datasetkey$name_idx);
+CREATE INDEX field_datasetkey$platform_idx ON metadata_entity_dataset (urn, field_datasetkey$platform_idx);
+CREATE INDEX field_datasetkey$origin_idx ON metadata_entity_dataset (urn, field_datasetkey$origin_idx);
+CREATE INDEX field_browsepaths$first_path_idx ON metadata_entity_dataset (urn, field_browsepaths$first_path_idx);
+CREATE INDEX field_ownership$primary_owner_idx ON metadata_entity_dataset (urn, field_ownership$primary_owner_idx);
+
+
+
+
+-- Demo Example:
+-- Get how many datasets are owned by John Doe, group by platforms
+
+/*
+select count(urn) dataset_count, field_datasetkey$platform_idx platform
+from
+    datahub.metadata_entity_dataset
+where field_ownership$primary_owner_idx in
+      (
+          select urn corpuser from datahub.metadata_entity_corpuser
+          where field_corpuserinfo$fullName_idx like 'John Doe'
+      )
+group by platform order by dataset_count desc
+*/

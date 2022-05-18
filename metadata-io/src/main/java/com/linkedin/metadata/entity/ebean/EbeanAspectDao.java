@@ -44,6 +44,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import static com.linkedin.metadata.Constants.ASPECT_LATEST_VERSION;
 
+
 @Slf4j
 public class EbeanAspectDao implements AspectDao {
 
@@ -86,7 +87,7 @@ public class EbeanAspectDao implements AspectDao {
     }
     if (!AspectStorageValidationUtil.checkV2TableExists(_server)) {
       log.error("GMS is on a newer version than your storage layer. Please refer to "
-                    + "https://datahubproject.io/docs/advanced/no-code-upgrade to view the upgrade guide.");
+          + "https://datahubproject.io/docs/advanced/no-code-upgrade to view the upgrade guide.");
       _canWrite = false;
       return false;
     } else {
@@ -95,21 +96,11 @@ public class EbeanAspectDao implements AspectDao {
     }
   }
 
-  public long saveLatestAspect(
-      @Nonnull final String urn,
-      @Nonnull final String aspectName,
-      @Nullable final String oldAspectMetadata,
-      @Nullable final String oldActor,
-      @Nullable final String oldImpersonator,
-      @Nullable final Timestamp oldTime,
-      @Nullable final String oldSystemMetadata,
-      @Nonnull final String newAspectMetadata,
-      @Nonnull final String newActor,
-      @Nullable final String newImpersonator,
-      @Nonnull final Timestamp newTime,
-      @Nullable final String newSystemMetadata,
-      final Long nextVersion
-  ) {
+  public long saveLatestAspect(@Nonnull final String urn, @Nonnull final String aspectName,
+      @Nullable final String oldAspectMetadata, @Nullable final String oldActor, @Nullable final String oldImpersonator,
+      @Nullable final Timestamp oldTime, @Nullable final String oldSystemMetadata,
+      @Nonnull final String newAspectMetadata, @Nonnull final String newActor, @Nullable final String newImpersonator,
+      @Nonnull final Timestamp newTime, @Nullable final String newSystemMetadata, final Long nextVersion) {
     validateConnection();
     if (!_canWrite) {
       return 0;
@@ -118,24 +109,20 @@ public class EbeanAspectDao implements AspectDao {
     long largestVersion = ASPECT_LATEST_VERSION;
     if (oldAspectMetadata != null && oldTime != null) {
       largestVersion = nextVersion;
-      saveAspect(urn, aspectName, oldAspectMetadata, oldActor, oldImpersonator, oldTime, oldSystemMetadata, largestVersion, true);
+      saveAspect(urn, aspectName, oldAspectMetadata, oldActor, oldImpersonator, oldTime, oldSystemMetadata,
+          largestVersion, true);
     }
 
     // Save newValue as the latest version (v0)
-    saveAspect(urn, aspectName, newAspectMetadata, newActor, newImpersonator, newTime, newSystemMetadata, ASPECT_LATEST_VERSION, oldAspectMetadata == null);
+    saveAspect(urn, aspectName, newAspectMetadata, newActor, newImpersonator, newTime, newSystemMetadata,
+        ASPECT_LATEST_VERSION, oldAspectMetadata == null);
 
     return largestVersion;
   }
 
-  protected void saveAspect(
-      @Nonnull final String urn,
-      @Nonnull final String aspectName,
-      @Nonnull final String aspectMetadata,
-      @Nonnull final String actor,
-      @Nullable final String impersonator,
-      @Nonnull final Timestamp timestamp,
-      @Nonnull final String systemMetadata,
-      final long version,
+  protected void saveAspect(@Nonnull final String urn, @Nonnull final String aspectName,
+      @Nonnull final String aspectMetadata, @Nonnull final String actor, @Nullable final String impersonator,
+      @Nonnull final Timestamp timestamp, @Nonnull final String systemMetadata, final long version,
       final boolean insert) {
     validateConnection();
 
@@ -154,16 +141,13 @@ public class EbeanAspectDao implements AspectDao {
 
   protected void saveAspect(@Nonnull final EbeanAspectV2 ebeanAspect, final boolean insert) {
     validateConnection();
-    // Dual write to entity table
-    if (ebeanAspect != null && ebeanAspect.getKey() != null && ebeanAspect.getKey().getUrn().startsWith("urn:li:corpuser:")) {
-      dualWriteToEntityTable(ebeanAspect);
-    }
-
     if (insert) {
       _server.insert(ebeanAspect);
     } else {
       _server.update(ebeanAspect);
     }
+    // Dual write to entity table
+    dualWriteToEntityTable(ebeanAspect);
   }
 
   @Nullable
@@ -212,11 +196,15 @@ public class EbeanAspectDao implements AspectDao {
 
   @Nullable
   public Optional<EbeanAspectV2> getEarliestAspect(@Nonnull final String urn) {
-    return _server.createQuery(EbeanAspectV2.class).where().eq("urn", urn)
+    return _server.createQuery(EbeanAspectV2.class)
+        .where()
+        .eq("urn", urn)
         .orderBy()
         .asc(EbeanAspectV2.CREATED_ON_COLUMN)
         .setMaxRows(1)
-        .findList().stream().findFirst();
+        .findList()
+        .stream()
+        .findFirst();
   }
 
   @Nonnull
@@ -264,12 +252,8 @@ public class EbeanAspectDao implements AspectDao {
    * Builds a single SELECT statement for batch get, which selects one entity, and then can be UNION'd with other SELECT
    * statements.
    */
-  private String batchGetSelect(
-      final int selectId,
-      @Nonnull final String urn,
-      @Nonnull final String aspect,
-      final long version,
-      @Nonnull final Map<String, Object> outputParamsToValues) {
+  private String batchGetSelect(final int selectId, @Nonnull final String urn, @Nonnull final String aspect,
+      final long version, @Nonnull final Map<String, Object> outputParamsToValues) {
     validateConnection();
 
     final String urnArg = "urn" + selectId;
@@ -286,9 +270,7 @@ public class EbeanAspectDao implements AspectDao {
   }
 
   @Nonnull
-  private List<EbeanAspectV2> batchGetUnion(
-      @Nonnull final List<EbeanAspectV2.PrimaryKey> keys,
-      final int keysCount,
+  private List<EbeanAspectV2> batchGetUnion(@Nonnull final List<EbeanAspectV2.PrimaryKey> keys, final int keysCount,
       final int position) {
     validateConnection();
 
@@ -305,12 +287,8 @@ public class EbeanAspectDao implements AspectDao {
     final int end = Math.min(keys.size(), position + keysCount);
     final Map<String, Object> params = new HashMap<>();
     for (int index = position; index < end; index++) {
-      sb.append(batchGetSelect(
-          index - position,
-          keys.get(index).getUrn(),
-          keys.get(index).getAspect(),
-          keys.get(index).getVersion(),
-          params));
+      sb.append(batchGetSelect(index - position, keys.get(index).getUrn(), keys.get(index).getAspect(),
+          keys.get(index).getVersion(), params));
 
       if (index != end - 1) {
         sb.append(" UNION ALL ");
@@ -333,10 +311,7 @@ public class EbeanAspectDao implements AspectDao {
   }
 
   @Nonnull
-  public ListResult<Long> listVersions(
-      @Nonnull final String urn,
-      @Nonnull final String aspectName,
-      final int start,
+  public ListResult<Long> listVersions(@Nonnull final String urn, @Nonnull final String aspectName, final int start,
       final int pageSize) {
     validateConnection();
 
@@ -356,11 +331,8 @@ public class EbeanAspectDao implements AspectDao {
   }
 
   @Nonnull
-  public ListResult<String> listUrns(
-      @Nonnull final String entityName,
-      @Nonnull final String aspectName,
-      final int start,
-      final int pageSize) {
+  public ListResult<String> listUrns(@Nonnull final String entityName, @Nonnull final String aspectName,
+      final int start, final int pageSize) {
     validateConnection();
 
     final String urnPrefixMatcher = "urn:li:" + entityName + ":%";
@@ -376,21 +348,15 @@ public class EbeanAspectDao implements AspectDao {
         .asc(EbeanAspectV2.URN_COLUMN)
         .findPagedList();
 
-    final List<String> urns = pagedList
-        .getList()
-        .stream()
-        .map(entry -> entry.getKey().getUrn())
-        .collect(Collectors.toList());
+    final List<String> urns =
+        pagedList.getList().stream().map(entry -> entry.getKey().getUrn()).collect(Collectors.toList());
 
     return toListResult(urns, null, pagedList, start);
   }
 
   @Nonnull
-  public ListResult<String> listAspectMetadata(
-      @Nonnull final Urn urn,
-      @Nonnull final String aspectName,
-      final int start,
-      final int pageSize) {
+  public ListResult<String> listAspectMetadata(@Nonnull final Urn urn, @Nonnull final String aspectName,
+      final int start, final int pageSize) {
     validateConnection();
 
     final PagedList<EbeanAspectV2> pagedList = _server.find(EbeanAspectV2.class)
@@ -404,28 +370,22 @@ public class EbeanAspectDao implements AspectDao {
         .asc(EbeanAspectV2.VERSION_COLUMN)
         .findPagedList();
 
-    final List<String> aspects = pagedList.getList().stream().map(EbeanAspectV2::getMetadata).collect(Collectors.toList());
-    final ListResultMetadata listResultMetadata = toListResultMetadata(pagedList.getList().stream().map(
-        EbeanAspectDao::toExtraInfo).collect(Collectors.toList()));
+    final List<String> aspects =
+        pagedList.getList().stream().map(EbeanAspectV2::getMetadata).collect(Collectors.toList());
+    final ListResultMetadata listResultMetadata = toListResultMetadata(
+        pagedList.getList().stream().map(EbeanAspectDao::toExtraInfo).collect(Collectors.toList()));
     return toListResult(aspects, listResultMetadata, pagedList, start);
   }
 
   @Nonnull
-  public ListResult<String> listLatestAspectMetadata(
-      @Nonnull final String entityName,
-      @Nonnull final String aspectName,
-      final int start,
-      final int pageSize) {
+  public ListResult<String> listLatestAspectMetadata(@Nonnull final String entityName, @Nonnull final String aspectName,
+      final int start, final int pageSize) {
     return listAspectMetadata(entityName, aspectName, ASPECT_LATEST_VERSION, start, pageSize);
   }
 
   @Nonnull
-  public ListResult<String> listAspectMetadata(
-      @Nonnull final String entityName,
-      @Nonnull final String aspectName,
-      final long version,
-      final int start,
-      final int pageSize) {
+  public ListResult<String> listAspectMetadata(@Nonnull final String entityName, @Nonnull final String aspectName,
+      final long version, final int start, final int pageSize) {
     validateConnection();
 
     final String urnPrefixMatcher = "urn:li:" + entityName + ":%";
@@ -441,9 +401,10 @@ public class EbeanAspectDao implements AspectDao {
         .asc(EbeanAspectV2.URN_COLUMN)
         .findPagedList();
 
-    final List<String> aspects = pagedList.getList().stream().map(EbeanAspectV2::getMetadata).collect(Collectors.toList());
-    final ListResultMetadata listResultMetadata = toListResultMetadata(pagedList.getList().stream().map(
-        EbeanAspectDao::toExtraInfo).collect(Collectors.toList()));
+    final List<String> aspects =
+        pagedList.getList().stream().map(EbeanAspectV2::getMetadata).collect(Collectors.toList());
+    final ListResultMetadata listResultMetadata = toListResultMetadata(
+        pagedList.getList().stream().map(EbeanAspectDao::toExtraInfo).collect(Collectors.toList()));
     return toListResult(aspects, listResultMetadata, pagedList, start);
   }
 
@@ -455,7 +416,8 @@ public class EbeanAspectDao implements AspectDao {
 
     T result = null;
     do {
-      try (Transaction transaction = _server.beginTransaction(TxScope.requiresNew().setIsolation(TxIsolation.REPEATABLE_READ))) {
+      try (Transaction transaction = _server.beginTransaction(
+          TxScope.requiresNew().setIsolation(TxIsolation.REPEATABLE_READ))) {
         transaction.setBatchMode(true);
         result = block.get();
         transaction.commit();
@@ -489,14 +451,11 @@ public class EbeanAspectDao implements AspectDao {
 
   public Map<String, Long> getNextVersions(@Nonnull final String urn, @Nonnull final Set<String> aspectNames) {
     Map<String, Long> result = new HashMap<>();
-    Junction<EbeanAspectV2> queryJunction = _server.find(EbeanAspectV2.class)
-        .select("aspect, max(version)")
-        .where()
-        .eq("urn", urn)
-        .or();
+    Junction<EbeanAspectV2> queryJunction =
+        _server.find(EbeanAspectV2.class).select("aspect, max(version)").where().eq("urn", urn).or();
 
     ExpressionList<EbeanAspectV2> exp = null;
-    for (String aspectName: aspectNames) {
+    for (String aspectName : aspectNames) {
       if (exp == null) {
         exp = queryJunction.eq("aspect", aspectName);
       } else {
@@ -511,11 +470,11 @@ public class EbeanAspectDao implements AspectDao {
     exp.orderBy().asc(EbeanAspectV2.VERSION_COLUMN);
     List<EbeanAspectV2.PrimaryKey> dbResults = exp.endOr().findIds();
 
-    for (EbeanAspectV2.PrimaryKey key: dbResults) {
+    for (EbeanAspectV2.PrimaryKey key : dbResults) {
       result.put(key.getAspect(), key.getVersion());
     }
 
-    for (String aspectName: aspectNames) {
+    for (String aspectName : aspectNames) {
       long nextVal = ASPECT_LATEST_VERSION;
       if (result.containsKey(aspectName)) {
         nextVal = result.get(aspectName) + 1L;
@@ -526,10 +485,8 @@ public class EbeanAspectDao implements AspectDao {
   }
 
   @Nonnull
-  private <T> ListResult<T> toListResult(
-      @Nonnull final List<T> values,
-      @Nullable final ListResultMetadata listResultMetadata,
-      @Nonnull final PagedList<?> pagedList,
+  private <T> ListResult<T> toListResult(@Nonnull final List<T> values,
+      @Nullable final ListResultMetadata listResultMetadata, @Nonnull final PagedList<?> pagedList,
       @Nullable final Integer start) {
     final int nextStart =
         (start != null && pagedList.hasNext()) ? start + pagedList.getList().size() : ListResult.INVALID_NEXT_START;
@@ -582,7 +539,8 @@ public class EbeanAspectDao implements AspectDao {
     return listResultMetadata;
   }
 
-  public List<EbeanAspectV2> getAspectsInRange(Urn urn, Set<String> aspectNames, long startTimeMillis, long endTimeMillis) {
+  public List<EbeanAspectV2> getAspectsInRange(Urn urn, Set<String> aspectNames, long startTimeMillis,
+      long endTimeMillis) {
     List<EbeanAspectV2> aspectV2s = _server.find(EbeanAspectV2.class)
         .select("*")
         .where()
@@ -598,7 +556,7 @@ public class EbeanAspectDao implements AspectDao {
     String metadataJson = ebeanAspectV2.getMetadata();
     final CorpUserEntity.PrimaryKey key = new CorpUserEntity.PrimaryKey(ebeanAspectV2.getKey().getUrn());
     CorpUserEntity corpUserEntity = _server.find(CorpUserEntity.class, key);
-    if(corpUserEntity == null ){
+    if (corpUserEntity == null) {
       corpUserEntity = new CorpUserEntity(ebeanAspectV2.getKey().getUrn(), null, null, null, null);
     }
 
@@ -616,43 +574,68 @@ public class EbeanAspectDao implements AspectDao {
     return corpUserEntity;
   }
 
-  private void dualWriteToEntityTable(EbeanAspectV2 ebeanAspect) {
-    log.info("@@ >>>>>> starts dual write on urn={}, aspect={}", ebeanAspect.getKey().getUrn(), ebeanAspect.getKey().getAspect());
-    CorpUserEntity corpUserEntity = contructCorpUserEntity(ebeanAspect);
-    _server.save(corpUserEntity);
-
-    /*
-    if (!entityExists(ebeanAspect.getKey().getUrn())) {
-      _server.insert(corpUserEntity);
-
-    } else {
-      final CorpUserEntity.PrimaryKey key = new CorpUserEntity.PrimaryKey(ebeanAspect.getKey().getUrn());
-      CorpUserEntity existingEntity = _server.find(CorpUserEntity.class, key);
-      setCorrectAspect(existingEntity, ebeanAspect);
-      _server.update(corpUserEntity);
-    }*/
-  }
-
-  private boolean entityExists(String urn) {
-    final String queryStr =
-        "SELECT * FROM metadata_entity_corpuser \n"
-            + "WHERE urn = '" + urn + "'";
-
-    final SqlQuery query = _server.createSqlQuery(queryStr);
-    final List<SqlRow> rows = query.findList();
-    return rows.size() > 0;
-  }
-
-  private void setCorrectAspect(CorpUserEntity corpUserEntity, EbeanAspectV2 ebeanAspectV2) {
+  private DatasetEntity constructDatasetEntity(EbeanAspectV2 ebeanAspectV2) {
     String aspect = ebeanAspectV2.getKey().getAspect();
-    if (aspect.equals("corpUserEditableInfo")) {
-      corpUserEntity.setCorpusereditableinfo(ebeanAspectV2.getMetadata());
-    } else if (aspect.equals("corpUserInfo")) {
-      corpUserEntity.setCorpuserinfo(ebeanAspectV2.getMetadata());
-    } else if (aspect.equals("corpUserStatus")) {
-      corpUserEntity.setCorpuserstatus(ebeanAspectV2.getMetadata());
-    } else if (aspect.equals("corpUserKey")) {
-      corpUserEntity.setGetcorpuserkey(ebeanAspectV2.getMetadata());
+    String metadataJson = ebeanAspectV2.getMetadata();
+    final DatasetEntity.PrimaryKey key = new DatasetEntity.PrimaryKey(ebeanAspectV2.getKey().getUrn());
+    DatasetEntity datasetEntity = _server.find(DatasetEntity.class, key);
+    if (datasetEntity == null) {
+      datasetEntity = new DatasetEntity(key, ebeanAspectV2.getKey().getUrn(), null, null, null, null,
+          null, null, null, null, null, null, null);
+    }
+
+    switch (aspect) {
+      case "browsePaths":
+        datasetEntity.setBrowsepaths(metadataJson);
+        break;
+      case "container":
+        datasetEntity.setContainer(metadataJson);
+        break;
+      case "dataPlatformInstance":
+        datasetEntity.setDataplatforminstance(metadataJson);
+        break;
+      case "datasetKey":
+        datasetEntity.setDatasetkey(metadataJson);
+        break;
+      case "datasetProperties":
+        datasetEntity.setDatasetproperties(metadataJson);
+        break;
+      case "editableSchemaMetadata":
+        datasetEntity.setEditableschemametadata(metadataJson);
+        break;
+      case "globalTags":
+        datasetEntity.setGlobaltags(metadataJson);
+        break;
+      case "institutionalMemory":
+        datasetEntity.setInstitutionalmemory(metadataJson);
+        break;
+      case "ownership":
+        datasetEntity.setOwnership(metadataJson);
+        break;
+      case "schemaMetadata":
+        datasetEntity.setSchemametadata(metadataJson);
+        break;
+      case "upstreamLineage":
+        datasetEntity.setUpstreamlineage(metadataJson);
+        break;
+      default:
+        throw new RuntimeException("unsupported aspect: " + aspect);
+    }
+    return datasetEntity;
+  }
+
+  private void dualWriteToEntityTable(EbeanAspectV2 ebeanAspect) {
+    if (ebeanAspect == null || ebeanAspect.getKey() == null) {
+      return;
+    }
+    if (ebeanAspect.getKey().getUrn().startsWith("urn:li:corpuser:")) {
+      log.info("@@ >>>>>> starts dual write on urn={}, aspect={}", ebeanAspect.getKey().getUrn(),
+          ebeanAspect.getKey().getAspect());
+      _server.save(contructCorpUserEntity(ebeanAspect));
+    } else if (ebeanAspect.getKey().getUrn().startsWith("urn:li:dataset:")) {
+      log.info("@@ >>>>>> starts dual write on urn={}, aspect={}", ebeanAspect.getKey().getUrn(),
+          ebeanAspect.getKey().getAspect());
+      _server.save(constructDatasetEntity(ebeanAspect));
     }
   }
 }
