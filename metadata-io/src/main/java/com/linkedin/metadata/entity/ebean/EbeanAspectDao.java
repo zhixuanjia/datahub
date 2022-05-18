@@ -624,7 +624,7 @@ public class EbeanAspectDao implements AspectDao {
     return datasetEntity;
   }
 
-  private void dualWriteToEntityTable(EbeanAspectV2 ebeanAspect) {
+  private synchronized void dualWriteToEntityTable(EbeanAspectV2 ebeanAspect) {
     if (ebeanAspect == null || ebeanAspect.getKey() == null) {
       return;
     }
