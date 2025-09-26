@@ -807,12 +807,34 @@ public class EntityController
       boolean withSystemMetadata,
       boolean expandEmpty)
       throws URISyntaxException {
-    return buildEntityList(
-        opContext,
-        searchEntities.stream().map(SearchEntity::getEntity).collect(Collectors.toList()),
-        aspectNames,
-        withSystemMetadata,
-        expandEmpty);
+    // Build a map of URN -> per-entity scrollId if provided via SearchEntity.extraFields
+    Map<String, String> perEntityScrollIds =
+        searchEntities.stream()
+            .collect(
+                Collectors.toMap(
+                    se -> se.getEntity().toString(),
+                    se -> se.getExtraFields() != null ? se.getExtraFields().get("scrollId") : null,
+                    (a, b) -> a,
+                    LinkedHashMap::new));
+
+    List<GenericEntityV3> entities =
+        buildEntityList(
+            opContext,
+            searchEntities.stream().map(SearchEntity::getEntity).collect(Collectors.toList()),
+            aspectNames,
+            withSystemMetadata,
+            expandEmpty);
+
+    // Attach scrollId to each entity element when available
+    for (GenericEntityV3 e : entities) {
+      String urn = e.getUrn();
+      String scroll = perEntityScrollIds.get(urn);
+      if (scroll != null) {
+        e.put("scrollId", scroll);
+      }
+    }
+
+    return entities;
   }
 
   private LinkedHashMap<Urn, Map<AspectSpec, Long>> toEntityVersionRequest(
